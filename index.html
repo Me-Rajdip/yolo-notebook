@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Understanding YOLO (v1 → 2026) · Notebook by Rajdip Bera</title>
+<meta name="author" content="Rajdip Bera">
+<meta name="description" content="Hand-written study notebook on YOLO object detection, from v1 to 2026, by Rajdip Bera, AI/ML Developer &amp; Researcher.">
+<link rel="author" href="https://me-rajdip.github.io/My-Profile/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Caveat:wght@500;700&family=Cutive+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk:#c9cfd3;
+  --paper:#fdfdf9;
+  --line:#c3d6ec;
+  --margin:#ec8b95;
+  --ink:#1c2f7c;
+  --red:#c4262e;
+  --marker:#1d1d1f;
+  --green:#1f7a4d;
+  --hole:#c9cfd3;
+  --note:#fff3a0;
+  --note-ink:#4a3b00;
+  --hl-y:rgba(255,224,0,.55);
+  --hl-g:rgba(90,215,120,.45);
+  --hl-p:rgba(255,110,170,.38);
+  --shade:rgba(0,0,0,.18);
+  --card:#ffffff;
+  --card-ink:#2b2b2b;
+  --tape:rgba(235,225,170,.75);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --desk:#14171b; --paper:#232831; --line:#334254; --margin:#a8505a; --ink:#bcd4ff; --red:#ff9494;
+    --marker:#f3f3f3; --green:#86e0aa; --hole:#14171b; --note:#5b5222; --note-ink:#fff3b8;
+    --hl-y:rgba(255,214,0,.30); --hl-g:rgba(90,215,120,.28); --hl-p:rgba(255,110,170,.30);
+    --shade:rgba(0,0,0,.5); --card:#2d333d; --card-ink:#e8e8e8; --tape:rgba(150,140,90,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --desk:#14171b; --paper:#232831; --line:#334254; --margin:#a8505a; --ink:#bcd4ff; --red:#ff9494;
+  --marker:#f3f3f3; --green:#86e0aa; --hole:#14171b; --note:#5b5222; --note-ink:#fff3b8;
+  --hl-y:rgba(255,214,0,.30); --hl-g:rgba(90,215,120,.28); --hl-p:rgba(255,110,170,.30);
+  --shade:rgba(0,0,0,.5); --card:#2d333d; --card-ink:#e8e8e8; --tape:rgba(150,140,90,.6);
+}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;background:var(--desk);color:var(--ink);
+  font-family:'Kalam','Bradley Hand','Segoe Print','Comic Sans MS',cursive;
+  font-size:19px;line-height:32px;font-weight:400;
+}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+
+/* ---------- tab bar ---------- */
+.tabs{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+  display:flex;gap:6px;align-items:flex-end;overflow-x:auto;
+  padding:10px 14px 0;background:var(--desk);
+  scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{
+  flex:0 0 auto;font-family:'Caveat',cursive;font-size:20px;line-height:24px;font-weight:700;
+  color:#2a2a2a;text-decoration:none;padding:6px 14px 5px;
+  border-radius:10px 10px 0 0;border:2px solid rgba(0,0,0,.35);border-bottom:0;
+  transform:translateY(3px);transition:transform .15s;
+}
+.tabs a:hover,.tabs a.on{transform:translateY(0)}
+.tabs a:focus-visible,.theme:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.tabs a:nth-child(5n+1){background:#ffd6d6}
+.tabs a:nth-child(5n+2){background:#ffe9b8}
+.tabs a:nth-child(5n+3){background:#d3f0c6}
+.tabs a:nth-child(5n+4){background:#cfe5ff}
+.tabs a:nth-child(5n+5){background:#e6d6ff}
+.theme{
+  position:fixed;right:calc(14px + env(safe-area-inset-right,0px));
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:30;
+  font-family:'Caveat',cursive;font-size:22px;font-weight:700;line-height:1;
+  background:var(--note);color:var(--note-ink);border:2px solid var(--marker);
+  border-radius:255px 15px 225px 15px/15px 225px 15px 255px;padding:8px 14px;cursor:pointer;
+  box-shadow:3px 4px 0 var(--shade);
+}
+
+/* ---------- sheet ---------- */
+main{padding:0 12px 80px}
+.sheet{
+  position:relative;max-width:860px;margin:28px auto 0;
+  padding:32px 34px 40px 96px;
+  background:
+    repeating-linear-gradient(to bottom,transparent 0,transparent 31px,var(--line) 31px,var(--line) 32px),
+    var(--paper);
+  background-position:0 20px,0 0;
+  box-shadow:0 2px 0 var(--shade),0 10px 24px var(--shade);
+  border-radius:3px 6px 6px 3px;
+  overflow:hidden;
+}
+.sheet::before{ /* red margin */
+  content:"";position:absolute;top:0;bottom:0;left:70px;width:2px;background:var(--margin);
+  box-shadow:4px 0 0 var(--margin);opacity:.8;
+}
+.sheet::after{ /* binder holes */
+  content:"";position:absolute;top:0;bottom:0;left:14px;width:26px;
+  background:radial-gradient(circle at 13px 50%,var(--hole) 0 9px,transparent 10px) 0 0/26px 128px repeat-y;
+  opacity:.9;
+}
+.sheet > *{position:relative}
+.pg{position:absolute !important;right:18px;bottom:6px;font-family:'Caveat',cursive;font-size:22px;color:var(--ink);opacity:.7;line-height:1}
+
+h1,h2,h3,h4{font-family:'Caveat','Kalam',cursive;margin:0;font-weight:700}
+h1{font-size:76px;line-height:80px;color:var(--ink);transform:rotate(-1.2deg);margin:16px 0 8px}
+h2{
+  font-size:46px;line-height:64px;color:var(--red);margin:0 0 0;
+  text-decoration:underline wavy var(--red) 2px;text-underline-offset:8px;transform:rotate(-.6deg);
+}
+h3{
+  font-size:32px;line-height:64px;color:var(--marker);margin:0;display:inline-block;
+  background:linear-gradient(transparent 62%,var(--hl-y) 62%,var(--hl-y) 92%,transparent 92%);
+  padding:0 8px;margin-left:-8px;
+}
+h4{font-size:26px;line-height:32px;color:var(--green);margin:0}
+p{margin:0 0 32px}
+p.tight{margin-bottom:0}
+ul,ol{margin:0 0 32px;padding-left:28px}
+li{margin:0}
+ul{list-style:none;padding-left:26px}
+ul li::before{content:"✱";position:absolute;margin-left:-24px;color:var(--red);font-size:15px}
+ol li::marker{font-family:'Caveat',cursive;font-weight:700;color:var(--red);font-size:24px}
+strong,b{font-weight:700}
+em,i{font-style:normal;color:var(--red)}
+.sub{font-family:'Caveat',cursive;font-size:24px;color:var(--red);line-height:32px}
+.red{color:var(--red)}
+.grn{color:var(--green)}
+.dim{opacity:.75}
+.y{background:linear-gradient(transparent 52%,var(--hl-y) 52%,var(--hl-y) 94%,transparent 94%);padding:0 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.g{background:linear-gradient(transparent 52%,var(--hl-g) 52%,var(--hl-g) 94%,transparent 94%);padding:0 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.p{background:linear-gradient(transparent 52%,var(--hl-p) 52%,var(--hl-p) 94%,transparent 94%);padding:0 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.circ{display:inline-block;line-height:26px;padding:0 10px;border:2px solid var(--red);border-radius:50% 46% 52% 44%/55% 48% 52% 45%;transform:rotate(-2deg)}
+.tick{font-family:'Caveat',cursive;font-size:26px;color:var(--green);font-weight:700}
+
+/* math, handwritten */
+.eq{
+  font-family:'Caveat','Kalam',cursive;font-size:30px;line-height:40px;color:var(--ink);
+  text-align:center;margin:0 0 32px;padding:14px 12px;overflow-x:auto;
+}
+.eq.box{border:2.5px solid var(--ink);border-radius:255px 15px 225px 15px/15px 225px 15px 255px;margin-left:6px;margin-right:6px}
+.eq.left{text-align:left}
+.eq small{font-size:22px}
+.m{font-family:'Caveat','Kalam',cursive;font-size:26px;line-height:1;white-space:nowrap}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.15;margin:0 4px}
+.fr > span{padding:0 6px}
+.fr > span:first-child{border-bottom:2.5px solid currentColor;border-radius:2px}
+
+/* sticky notes, boxes, cards */
+.note{
+  position:relative;display:block;width:max-content;max-width:100%;
+  background:var(--note);color:var(--note-ink);
+  font-family:'Caveat',cursive;font-size:25px;line-height:30px;font-weight:500;
+  padding:18px 20px 16px;margin:6px 0 38px 6px;transform:rotate(-1.4deg);
+  box-shadow:3px 5px 8px var(--shade);
+}
+.note::before{content:"";position:absolute;top:-10px;left:50%;width:84px;height:22px;margin-left:-42px;background:var(--tape);transform:rotate(2deg)}
+.note.r{transform:rotate(1.2deg)}
+.note em,.note i{color:#b3171f}
+.box{border:2.5px solid var(--ink);border-radius:255px 15px 225px 15px/15px 225px 15px 255px;padding:14px 22px;margin:0 6px 32px}
+.box.red{border-color:var(--red)}
+.box.grn{border-color:var(--green)}
+.box > *:last-child{margin-bottom:0}
+.quote{border-left:4px solid var(--red);margin:0 0 32px;padding:0 0 0 18px;font-weight:700}
+.fig{margin:0 0 32px;text-align:center}
+.fig svg{width:100%;height:auto;max-width:560px;overflow:visible}
+.fig figcaption{font-family:'Caveat',cursive;font-size:22px;color:var(--red);line-height:26px;margin-top:4px}
+.card{
+  background:var(--card);color:var(--card-ink);position:relative;
+  font-family:'Cutive Mono','Courier New',monospace;font-size:16px;line-height:24px;
+  padding:22px 20px 18px;margin:12px 6px 40px;box-shadow:2px 4px 8px var(--shade);transform:rotate(.4deg);
+  overflow-x:auto;white-space:pre;
+}
+.card::before{content:"";position:absolute;top:-10px;left:30px;width:80px;height:22px;background:var(--tape);transform:rotate(-3deg)}
+.card .c{color:#2e7d4f;opacity:.9}
+
+/* tables */
+.tw{overflow-x:auto;margin:0 0 32px}
+table{border-collapse:separate;border-spacing:0;font-size:18px;line-height:30px;min-width:100%;}
+th{font-family:'Caveat',cursive;font-size:24px;color:var(--red);text-align:left;padding:2px 14px;border-bottom:3px solid var(--ink);white-space:nowrap}
+td{padding:2px 14px;border-bottom:1.5px dashed var(--ink);vertical-align:top}
+td.n,th.n{text-align:right}
+tr.hot td{background:linear-gradient(transparent 20%,var(--hl-y) 20%,var(--hl-y) 90%,transparent 90%)}
+
+/* cover */
+.cover .label{display:inline-block;border:2.5px solid var(--ink);border-radius:255px 15px 225px 15px/15px 225px 15px 255px;padding:6px 22px;font-family:'Caveat',cursive;font-size:28px;line-height:36px;transform:rotate(1deg);margin-bottom:32px}
+.toc{columns:2;column-gap:36px;list-style:none;padding:0}
+.toc li::before{content:none}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:2px dotted var(--red)}
+.toc a:hover{color:var(--red)}
+.toc span{font-family:'Caveat',cursive;font-size:26px;color:var(--red);margin-right:8px;font-weight:700}
+
+/* svg ink */
+svg .t{font-family:'Caveat',cursive;font-size:22px;fill:var(--ink);font-weight:700}
+svg .tr{font-family:'Caveat',cursive;font-size:22px;fill:var(--red);font-weight:700}
+svg .tg{font-family:'Caveat',cursive;font-size:22px;fill:var(--green);font-weight:700}
+svg .ts{font-family:'Caveat',cursive;font-size:18px;fill:var(--ink);font-weight:500}
+.si{fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.sr{fill:none;stroke:var(--red);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.sg{fill:none;stroke:var(--green);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.sd{stroke-dasharray:7 6}
+.sf-y{fill:var(--hl-y);stroke:none}
+.sf-g{fill:var(--hl-g);stroke:none}
+.sf-p{fill:var(--hl-p);stroke:none}
+.sthin{stroke:var(--ink);stroke-width:1.2;opacity:.55;fill:none}
+
+@media (max-width:640px){
+  body{font-size:17.5px}
+  .sheet{padding:26px 14px 40px 54px}
+  .sheet::before{left:40px}
+  .sheet::after{left:4px;width:20px;background-size:20px 128px;background-image:radial-gradient(circle at 10px 50%,var(--hole) 0 6px,transparent 7px)}
+  h1{font-size:54px;line-height:60px}
+  h2{font-size:36px;line-height:64px}
+  h3{font-size:28px}
+  .toc{columns:1}
+  .eq{font-size:25px}
+  .m{font-size:23px}
+  .fr > span{padding:0 3px}
+  .box{padding:12px 14px}
+}
+
+/* =====================================================================
+   REFINEMENT LAYER — cleaner chrome, paper texture, smooth motion
+   ===================================================================== */
+:root{
+  --desk-ink:#39414a;
+  --desk-glass:rgba(201,207,211,.92);
+  --stack1:#f3f3ee; --stack2:#e7e7e1;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .26 0 0 0 0 .2 0 0 0 .075 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--desk-ink:#9aa4ad;--desk-glass:rgba(20,23,27,.92);--stack1:#1d2229;--stack2:#181c22}
+}
+:root[data-theme="dark"]{--desk-ink:#9aa4ad;--desk-glass:rgba(20,23,27,.92);--stack1:#1d2229;--stack2:#181c22}
+
+html.js{scroll-behavior:auto}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -10%,rgba(255,255,255,.35),transparent 70%),
+    var(--grain),
+    var(--desk);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+:root[data-theme="dark"] body{background:radial-gradient(1200px 600px at 50% -10%,rgba(255,255,255,.05),transparent 70%),var(--grain),var(--desk)}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) body{background:radial-gradient(1200px 600px at 50% -10%,rgba(255,255,255,.05),transparent 70%),var(--grain),var(--desk)}
+}
+::selection{background:var(--hl-y);color:inherit}
+
+/* ---------- top bar ---------- */
+.bar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:20;
+  display:flex;align-items:flex-end;gap:14px;padding:10px 16px 0;
+  background:var(--desk-glass);
+  -webkit-backdrop-filter:saturate(1.2) blur(10px);backdrop-filter:saturate(1.2) blur(10px);
+  box-shadow:0 1px 0 rgba(0,0,0,.14),0 10px 18px -14px var(--shade);
+}
+.brand{
+  flex:0 0 auto;align-self:center;display:flex;align-items:center;gap:8px;
+  font-family:'Caveat',cursive;font-weight:700;font-size:24px;line-height:1;
+  color:var(--marker);text-decoration:none;padding:4px 6px 8px;border-radius:8px;
+}
+.brand .pen{display:inline-block;transform:rotate(-12deg);color:var(--red);font-size:22px}
+.brand:focus-visible,.by-link:focus-visible,.totop:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.tabs{position:relative;flex:1 1 auto;min-width:0;padding:0;background:none;top:auto;z-index:auto;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 22px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 22px),transparent 100%);
+  padding-left:10px;padding-right:20px}
+.tabs a{font-size:19px;padding:6px 13px 5px;border:1.5px solid rgba(0,0,0,.28);border-bottom:0;
+  box-shadow:0 -1px 0 rgba(255,255,255,.4) inset;transition:transform .2s ease,box-shadow .2s ease,filter .2s ease}
+.tabs a:nth-child(5n+1){background:#f4d9d5}
+.tabs a:nth-child(5n+2){background:#f2e5c2}
+.tabs a:nth-child(5n+3){background:#d9e9d0}
+.tabs a:nth-child(5n+4){background:#d4e4f3}
+.tabs a:nth-child(5n+5){background:#e3daf0}
+.tabs a.on{box-shadow:inset 0 3px 0 var(--red);filter:saturate(1.15)}
+:root[data-theme="dark"] .tabs a{filter:brightness(.86)}
+:root[data-theme="dark"] .tabs a.on{filter:brightness(.98)}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .tabs a{filter:brightness(.86)}
+  :root:not([data-theme="light"]) .tabs a.on{filter:brightness(.98)}
+}
+.progress{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--red);transform-origin:0 50%;transform:scaleX(0);opacity:.85;will-change:transform}
+
+/* ---------- floating buttons ---------- */
+.theme{transition:transform .2s ease,box-shadow .2s ease}
+.theme:hover{transform:translateY(-2px) rotate(-1deg);box-shadow:4px 7px 0 var(--shade)}
+.totop{
+  position:fixed;right:calc(14px + env(safe-area-inset-right,0px));
+  bottom:calc(68px + env(safe-area-inset-bottom,0px));z-index:30;
+  width:44px;height:44px;border-radius:50%;cursor:pointer;
+  font-family:'Caveat',cursive;font-size:26px;font-weight:700;line-height:1;
+  background:var(--paper);color:var(--ink);border:2px solid var(--marker);
+  box-shadow:3px 4px 0 var(--shade);
+  opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .3s ease,transform .3s ease;
+}
+.totop.show{opacity:1;transform:none;pointer-events:auto}
+.totop:hover{transform:translateY(-2px)}
+
+/* ---------- paper ---------- */
+.sheet{
+  margin-top:34px;
+  background:
+    repeating-linear-gradient(to bottom,transparent 0,transparent 31px,var(--line) 31px,var(--line) 32px),
+    var(--grain),
+    var(--paper);
+  background-position:0 20px,0 0,0 0;
+  box-shadow:
+    inset 20px 0 22px -18px rgba(0,0,0,.16),
+    0 1px 0 rgba(0,0,0,.10),
+    4px 5px 0 -1px var(--stack1),4px 6px 0 -1px rgba(0,0,0,.10),
+    8px 10px 0 -2px var(--stack2),8px 11px 0 -2px rgba(0,0,0,.08),
+    0 22px 38px -12px var(--shade);
+  transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1);
+}
+.sheet.pre{opacity:0;transform:translateY(30px)}
+.sheet:nth-of-type(even).pre{transform:translateY(30px) rotate(.25deg)}
+.pg{opacity:.6}
+h2{text-decoration:underline solid var(--red) 3px;text-decoration-skip-ink:none;text-underline-offset:9px}
+.note,.card,.box,.eq.box{transition:transform .35s ease,box-shadow .35s ease}
+.note:hover{transform:rotate(-.4deg) translateY(-2px);box-shadow:4px 9px 12px var(--shade)}
+.note.r:hover{transform:rotate(.3deg) translateY(-2px);box-shadow:4px 9px 12px var(--shade)}
+.card:hover{transform:rotate(0deg) translateY(-2px);box-shadow:3px 8px 14px var(--shade)}
+.tw{-webkit-overflow-scrolling:touch}
+
+/* ---------- cover details: the hand-made bits ---------- */
+.sheet > .ring{
+  position:absolute;top:44px;right:46px;width:128px;height:128px;border-radius:50%;
+  border:5px solid rgba(122,76,36,.16);box-shadow:inset 0 0 0 2px rgba(122,76,36,.07),0 0 0 1px rgba(122,76,36,.06);
+  transform:rotate(14deg);pointer-events:none;filter:blur(.35px);
+  clip-path:polygon(0 0,100% 0,100% 82%,88% 100%,0 100%);
+}
+:root[data-theme="dark"] .sheet > .ring{border-color:rgba(255,220,170,.07);box-shadow:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .sheet > .ring{border-color:rgba(255,220,170,.07);box-shadow:none}}
+.sheet > .wash{position:absolute;width:132px;height:30px;background:var(--tape);box-shadow:0 1px 3px var(--shade);pointer-events:none}
+.sheet > .wash.l{top:20px;left:-34px;transform:rotate(-38deg)}
+.sheet > .wash.r{top:20px;right:-34px;transform:rotate(38deg)}
+.scribble{display:block;width:min(430px,82%);height:14px;margin:-12px 0 -2px;overflow:visible;pointer-events:none}
+.scribble path{fill:none;stroke:var(--red);stroke-width:3.2;stroke-linecap:round}
+
+.byline{
+  font-family:'Caveat',cursive;font-size:29px;line-height:32px;margin:0;
+  color:var(--ink);transform:rotate(-.6deg);transform-origin:left center;
+}
+.byline .w{color:var(--red);margin-right:6px}
+.by-link{
+  color:var(--ink);text-decoration:none;font-weight:700;
+  background:linear-gradient(transparent 58%,var(--hl-y) 58%,var(--hl-y) 92%,transparent 92%);
+  padding:0 4px;border-radius:2px;transition:background-size .3s ease,color .2s ease;
+}
+.by-link:hover{color:var(--red);background:linear-gradient(transparent 40%,var(--hl-y) 40%,var(--hl-y) 94%,transparent 94%)}
+
+.signoff{text-align:right;margin:0 6px 32px 0}
+.signoff .sig{font-family:'Caveat',cursive;font-weight:700;font-size:46px;line-height:64px;color:var(--ink);margin:0;transform:rotate(-3deg);display:block}
+.signoff .role{font-family:'Caveat',cursive;font-size:26px;line-height:32px;margin:0;color:var(--red)}
+
+/* ---------- desk footer ---------- */
+.colophon{max-width:860px;margin:0 auto;padding:6px 20px calc(110px + env(safe-area-inset-bottom,0px));text-align:center;
+  font-family:'Caveat',cursive;font-size:24px;line-height:32px;color:var(--desk-ink)}
+.colophon .by-link{color:var(--marker)}
+.colophon small{display:block;font-family:'Kalam',cursive;font-size:14px;line-height:22px;opacity:.75;margin-top:6px}
+main{padding-bottom:36px}
+
+@media (max-width:640px){
+  .bar{padding:8px 10px 0;gap:6px}
+  .brand .bt{display:none}
+  .brand{padding:2px 4px 8px}
+  .sheet > .ring{width:84px;height:84px;top:30px;right:20px}
+  .byline{font-size:25px}
+  .signoff .sig{font-size:38px}
+  .colophon{font-size:21px}
+}
+@media (prefers-reduced-motion: reduce){
+  .sheet,.sheet.pre{transition:none;opacity:1;transform:none}
+  .totop,.note,.card,.tabs a{transition:none}
+}
+@media print{
+  html{background:#fff}
+  body{background:#fff}
+  .bar,.theme,.totop,.sheet > .wash,.sheet > .ring{display:none !important}
+  main{padding:0}
+  .sheet,.sheet.pre{opacity:1 !important;transform:none !important;box-shadow:none;margin:0 auto;break-after:page;overflow:visible}
+  .note,.card,.box,.eq,.fig,table{break-inside:avoid}
+  .colophon{padding-bottom:12px;color:#333}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="wob" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="2" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/>
+  </filter>
+</svg>
+
+<header class="bar">
+  <a class="brand" href="#top" aria-label="Back to cover"><span class="pen" aria-hidden="true">✎</span><span class="bt">YOLO Notebook</span></a>
+<nav class="tabs" aria-label="Notebook sections">
+  <a href="#s0">0 · Why</a>
+  <a href="#s1">1 · Boxes</a>
+  <a href="#s2">2 · IoU</a>
+  <a href="#s3">3 · YOLOv1</a>
+  <a href="#s4">4 · v2</a>
+  <a href="#s5">5 · v3</a>
+  <a href="#s6">6 · IoU losses</a>
+  <a href="#s7">7 · v4–v10</a>
+  <a href="#s8">8 · YOLO11</a>
+  <a href="#s9">9 · v12–26</a>
+  <a href="#s10">10 · Table</a>
+  <a href="#s11">11 · Metrics</a>
+  <a href="#s12">12 · Code</a>
+  <a href="#s13">13 · Recap</a>
+</nav>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+</header>
+
+<button class="theme" id="theme" type="button" aria-label="Switch between light and dark paper">☾ night mode</button>
+<button class="totop" id="totop" type="button" aria-label="Back to top">↑</button>
+
+<main>
+
+<!-- ============ COVER ============ -->
+<section class="sheet cover" id="top">
+  <span class="wash l" aria-hidden="true"></span><span class="wash r" aria-hidden="true"></span>
+  <div class="ring" aria-hidden="true"></div>
+  <div class="label">Subject: Object detection &nbsp;·&nbsp; Topic: YOLO</div>
+  <h1>My Notebook:<br>Understanding YOLO</h1>
+  <svg class="scribble" viewBox="0 0 430 14" preserveAspectRatio="none" aria-hidden="true"><path filter="url(#wob)" d="M3 9 C 62 2, 125 12, 196 6 S 336 3, 427 8"/></svg>
+  <p class="sub" style="font-size:36px;line-height:64px;margin:0">(v1 → 2026)</p>
+  <p class="byline"><span class="w">written by</span><a class="by-link" href="https://me-rajdip.github.io/My-Profile/" target="_blank" rel="noopener">Rajdip Bera | AI/ML Developer &amp; Researcher</a></p>
+  <p style="margin-top:32px">Personal study notes.<br><span class="y">Goal: actually understand the math, not just memorize names.</span></p>
+  <div class="note r">Do every worked example by hand.<br>If I can't redo it, I don't know it yet!</div>
+  <h3>What's inside</h3>
+  <ol class="toc" style="margin-top:0">
+    <li><span>0</span><a href="#s0">Why am I studying this?</a></li>
+    <li><span>1</span><a href="#s1">Bounding boxes</a></li>
+    <li><span>2</span><a href="#s2">IoU</a></li>
+    <li><span>3</span><a href="#s3">YOLOv1 (2015)</a></li>
+    <li><span>4</span><a href="#s4">YOLOv2 / 9000</a></li>
+    <li><span>5</span><a href="#s5">YOLOv3</a></li>
+    <li><span>6</span><a href="#s6">The IoU-loss family</a></li>
+    <li><span>7</span><a href="#s7">YOLOv4 → v10</a></li>
+    <li><span>8</span><a href="#s8">YOLO11</a></li>
+    <li><span>9</span><a href="#s9">YOLO12, 13, 26</a></li>
+    <li><span>10</span><a href="#s10">Master comparison table</a></li>
+    <li><span>11</span><a href="#s11">Metrics: P, R, mAP</a></li>
+    <li><span>12</span><a href="#s12">Practical cheat-sheet</a></li>
+    <li><span>13</span><a href="#s13">One-paragraph summary</a></li>
+  </ol>
+  <span class="pg">cover</span>
+</section>
+
+<!-- ============ 0 ============ -->
+<section class="sheet" id="s0">
+  <h2>0. Why am I studying this?</h2>
+  <p>Object detection = find <b>what</b> is in an image AND <b>where</b> it is (a box around it).</p>
+  <p>YOLO's whole trick: do it in <span class="y">one pass</span> through one network, instead of a multi-stage pipeline.</p>
+  <div class="box red">
+    <p>Before I touch any version, I need two building blocks solid:<br><b>bounding boxes</b> and <b>IoU</b>.<br>Everything else is built on these.</p>
+  </div>
+  <span class="pg">p. 1</span>
+</section>
+
+<!-- ============ 1 ============ -->
+<section class="sheet" id="s1">
+  <h2>1. Bounding boxes — two ways to write one</h2>
+  <ul>
+    <li><b>Corner format:</b> <span class="m">(x₁, y₁, x₂, y₂)</span> — top-left corner, bottom-right corner.</li>
+    <li><b>Center format:</b> <span class="m">(x, y, w, h)</span> — center point, then width and height.</li>
+  </ul>
+
+  <figure class="fig">
+    <svg viewBox="0 0 540 250" role="img" aria-label="One box drawn with corner format and center format labels">
+      <g filter="url(#wob)">
+        <rect class="si" x="90" y="40" width="240" height="140"/>
+        <circle class="sr" cx="90" cy="40" r="5" style="fill:var(--red)"/>
+        <circle class="sr" cx="330" cy="180" r="5" style="fill:var(--red)"/>
+        <circle class="sg" cx="210" cy="110" r="5" style="fill:var(--green)"/>
+        <path class="sg" d="M90 205 H330 M90 198 V212 M330 198 V212"/>
+        <path class="sg" d="M365 40 V180 M358 40 H372 M358 180 H372"/>
+      </g>
+      <text class="tr" x="14" y="32">(x₁, y₁)</text>
+      <text class="tr" x="338" y="206">(x₂, y₂)</text>
+      <text class="tg" x="220" y="104">(x, y)</text>
+      <text class="tg" x="204" y="232">w</text>
+      <text class="tg" x="380" y="116">h</text>
+      <text class="ts" x="400" y="40">red = corner format</text>
+      <text class="ts" x="400" y="62">green = center format</text>
+    </svg>
+    <figcaption>same box, two descriptions</figcaption>
+  </figure>
+
+  <p>YOLO uses <span class="y">center format</span>.</p>
+  <div class="note">Note to self: <em>why?</em> The network predicts a center point relative to a grid cell — that only makes sense in center format. Corner format would force it to know absolute edges, which don't align nicely with a grid.</div>
+  <span class="pg">p. 2</span>
+</section>
+
+<!-- ============ 2 ============ -->
+<section class="sheet" id="s2">
+  <h2>2. IoU (Intersection over Union)</h2>
+  <p class="sub" style="margin-top:-8px">the one formula I must never forget</p>
+
+  <div class="eq box">
+    IoU(A, B) =
+    <span class="fr"><span>Area(A ∩ B)</span><span>Area(A ∪ B)</span></span>
+  </div>
+
+  <ul>
+    <li>Numerator = overlapping region.</li>
+    <li>Denominator = total space covered by both boxes combined.</li>
+    <li>Range: <b>0</b> (no overlap) to <b>1</b> (identical boxes).</li>
+  </ul>
+
+  <p>Trick for the union, since I never measure it directly:</p>
+  <div class="eq">Area(A ∪ B) = Area(A) + Area(B) − Area(A ∩ B)</div>
+  <p class="dim" style="margin-top:-8px">(reasoning: if I just add both areas, the overlapping part got counted twice, so subtract it once.)</p>
+
+  <h3>Worked example — by hand</h3>
+  <div class="box">
+    <p class="tight">Box A: x ∈ [100, 200], y ∈ [100, 200] → area = 100 × 100 = <b>10,000</b></p>
+    <p class="tight">Box B: x ∈ [150, 250], y ∈ [120, 220] → area = <b>10,000</b></p>
+  </div>
+
+  <figure class="fig">
+    <svg viewBox="0 0 600 500" role="img" aria-label="Graph with x and y axes showing Box A from (100,100) to (200,200) and Box B from (150,120) to (250,220); the overlap, 50 wide and 80 tall, is shaded green">
+      <rect class="sf-g" x="242.0" y="144.0" width="130" height="208"/>
+      <path class="sthin sd" d="M112 40V456 M242 40V456 M372 40V456 M502 40V456 M60 92 H554 M60 144 H554 M60 352 H554 M60 404 H554"/>
+      <g filter="url(#wob)">
+        <path class="si" d="M60 40 H582 M574 34 L584 40 L574 46 M60 40 V482 M54 474 L60 484 L66 474"/>
+        <rect class="si" x="112.0" y="92.0" width="260" height="260"/>
+        <rect class="sr" x="242.0" y="144.0" width="260" height="260"/>
+        <path class="sg" d="M242.0 322 H372.0 M248.0 316 L242.0 322 L248.0 328 M366.0 316 L372.0 322 L366.0 328"/>
+        <path class="sg" d="M360.0 144.0 V352.0 M354.0 152.0 L360.0 144.0 L366.0 152.0 M354.0 344.0 L360.0 352.0 L366.0 344.0"/>
+      </g>
+      <g style="fill:var(--ink)"><circle cx="112.0" cy="92.0" r="5"/><circle cx="372.0" cy="352.0" r="5"/></g>
+      <g style="fill:var(--red)"><circle cx="242.0" cy="144.0" r="5"/><circle cx="502.0" cy="404.0" r="5"/></g>
+      <text class="ts" x="112" y="30" text-anchor="middle">100</text><text class="ts" x="242" y="30" text-anchor="middle">150</text><text class="ts" x="372" y="30" text-anchor="middle">200</text><text class="ts" x="502" y="30" text-anchor="middle">250</text><text class="ts" x="52" y="98" text-anchor="end">100</text><text class="ts" x="52" y="150" text-anchor="end">120</text><text class="ts" x="52" y="358" text-anchor="end">200</text><text class="ts" x="52" y="410" text-anchor="end">220</text>
+      <text class="t" x="592" y="34" style="font-size:24px">x</text>
+      <text class="t" x="44" y="498" style="font-size:24px">y</text>
+      <text class="t" x="120.0" y="118.0" style="font-size:30px">A</text>
+      <text class="ts" x="142.0" y="118.0" style="font-size:17px">(100,100)</text>
+      <text class="tr" x="494.0" y="370.0" text-anchor="end" style="font-size:30px">B</text>
+      <text class="ts" x="494.0" y="394.0" text-anchor="end" style="font-size:17px">(250,220)</text>
+      <text class="tr" x="236" y="168" text-anchor="end" style="font-size:17px">B (150,120)</text>
+      <text class="ts" x="380" y="344" style="font-size:17px">A (200,200)</text>
+      <text class="tg" x="250.0" y="212">overlap</text>
+      <text class="tg" x="250.0" y="238">50 × 80</text>
+      <text class="tg" x="250.0" y="264">= 4,000</text>
+      <text class="tg" x="307.0" y="312" text-anchor="middle">50</text>
+      <text class="tg" x="350.0" y="254.0" text-anchor="end">80</text>
+      <text class="ts" x="60" y="494" style="font-size:16px"> </text>
+      <text class="ts" x="150" y="494" style="font-size:16px">y grows downward, like pixels in an image</text>
+    </svg>
+    <figcaption>Box A (black) and Box B (red) plotted at their real coordinates · green = intersection, 50 wide × 80 tall</figcaption>
+  </figure>
+
+  <p>Overlap region:</p>
+  <ul>
+    <li>x-overlap: from 150 to 200 → width <b>50</b></li>
+    <li>y-overlap: from 120 to 200 → height <b>80</b></li>
+    <li>Intersection = 50 × 80 = <b>4,000</b></li>
+  </ul>
+  <div class="eq">Union = 10,000 + 10,000 − 4,000 = 16,000</div>
+  <div class="eq box">IoU = <span class="fr"><span>4,000</span><span>16,000</span></span> = <b>0.25</b></div>
+
+  <p><span class="y">Rule of thumb:</span> IoU ≥ 0.5 is usually considered "a correct detection."</p>
+  <p><span class="tick">✓</span> Check myself: if the two boxes were identical, intersection = union, IoU = 1. Makes sense.</p>
+  <span class="pg">p. 3</span>
+</section>
+
+<!-- ============ 3 ============ -->
+<section class="sheet" id="s3">
+  <h2>3. YOLOv1 (2015) — the original idea</h2>
+  <p>Paper: <em>"You Only Look Once: Unified, Real-Time Object Detection"</em> — Redmon, Divvala, Girshick, Farhadi.</p>
+
+  <h3>3.1 The core rule</h3>
+  <div class="quote">Divide the image into an S×S grid. Whichever cell contains the <u>center</u> of an object is responsible for detecting that object.</div>
+  <p>YOLOv1 specifics: <b>S = 7</b>, input image 448×448, so each cell = 448 / 7 = <b>64 pixels</b>.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 540 310" role="img" aria-label="A 7 by 7 grid over an image with a dog box whose center falls in row 3, column 4">
+      <rect class="sf-y" x="180" y="140" width="40" height="40"/>
+      <g filter="url(#wob)">
+        <rect class="si" x="20" y="20" width="280" height="280"/>
+        <path class="sthin" d="M60 20V300M100 20V300M140 20V300M180 20V300M220 20V300M260 20V300M20 60H300M20 100H300M20 140H300M20 180H300M20 220H300M20 260H300"/>
+        <rect class="sr" x="157" y="75" width="100" height="140"/>
+        <circle cx="207.5" cy="145" r="5" style="fill:var(--red)"/>
+        <path class="sr" d="M310 150 C 345 150, 350 100, 385 96"/>
+        <path class="sr" d="M378 86 L388 96 L375 102"/>
+      </g>
+      <text class="tr" x="395" y="92">this cell owns the dog</text>
+      <text class="tr" x="395" y="116">row 3, col 4</text>
+      <text class="t" x="168" y="122">dog</text>
+      <text class="ts" x="20" y="316" style="font-size:16px">448 px → 7 cells × 64 px</text>
+    </svg>
+    <figcaption>the box center (red dot) lands in one cell</figcaption>
+  </figure>
+
+  <p>Each cell predicts:</p>
+  <ul>
+    <li><b>B = 2</b> bounding boxes (each with 5 numbers)</li>
+    <li><b>C = 20</b> class probabilities (PASCAL VOC has 20 classes) — <span class="y">shared</span> across both boxes in that cell</li>
+  </ul>
+  <div class="note r"><em>This is a real limitation:</em> one cell = one class guess, no matter how many boxes. Two overlapping objects of different classes centered in the same cell → one gets missed. Explains a weakness later.</div>
+
+  <h3>3.2 Encoding a box as numbers</h3>
+  <p>Raw pixel numbers (like 300, 224) are big and awkward for a neural net to learn. So normalize:</p>
+  <ul>
+    <li><span class="m">(x, y)</span> = center, <b>relative to its own cell</b>, in [0, 1]</li>
+    <li><span class="m">(w, h)</span> = size, <b>relative to whole image</b>, in [0, 1]</li>
+  </ul>
+
+  <h4>Worked example (redo this myself)</h4>
+  <p>Dog box: center at pixel (300, 200), width 160, height 224.</p>
+  <p>Which cell? ⌊300/64⌋ = <b>4</b> (column), ⌊200/64⌋ = <b>3</b> (row).<br>Cell (row 3, col 4) starts at pixel (256, 192).</p>
+  <div class="eq left">
+    x = <span class="fr"><span>300 − 256</span><span>64</span></span> = 0.6875
+    &nbsp;&nbsp; y = <span class="fr"><span>200 − 192</span><span>64</span></span> = 0.125<br>
+    w = <span class="fr"><span>160</span><span>448</span></span> = 0.3571
+    &nbsp;&nbsp; h = <span class="fr"><span>224</span><span>448</span></span> = 0.5
+  </div>
+  <p>Decode check: (4 + 0.6875) × 64 = 300 <span class="tick">✓</span> — round trip works.</p>
+
+  <h3>3.3 The 5th number: confidence</h3>
+  <div class="eq box">c = Pr(Object) × IoU<sup>truth</sup><sub>pred</sub></div>
+  <ul>
+    <li>No object in the cell → target is <b>0</b>.</li>
+    <li>There IS an object → target is the <b>actual IoU</b> of my predicted box with the truth.</li>
+  </ul>
+  <p>This is clever: a badly-placed box, even in the right cell, gets <span class="y">punished with a low confidence target</span>. The model is forced to be honest about its own box quality, not just "yes/no there's something here."</p>
+
+  <h3>3.4 Class probabilities</h3>
+  <p>Each cell also predicts Pr(Class<sub>i</sub> | Object) — for the 20 classes. At test time:</p>
+  <div class="eq">Pr(Class<sub>i</sub> | Object) × Pr(Object) × IoU = Pr(Class<sub>i</sub>) × IoU</div>
+  <p>Example: cell says "dog" with prob 0.9, box confidence 0.7 → final dog score = 0.9 × 0.7 = <b>0.63</b>.</p>
+
+  <h3>3.5 Output size — count it myself</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 440 250" role="img" aria-label="A 7 by 7 by 30 output tensor drawn as a block">
+      <g filter="url(#wob)">
+        <path class="sf-y" d="M30 70 L130 20 L330 20 L230 70 Z"/>
+        <rect class="si" x="30" y="70" width="200" height="140"/>
+        <path class="si" d="M30 70 L130 20 H330 L230 70 M230 70 V210 L330 160 V20"/>
+        <path class="sthin" d="M58.5 70V210M87 70V210M115.5 70V210M144 70V210M172.5 70V210M201 70V210M30 90H230M30 110H230M30 130H230M30 150H230M30 170H230M30 190H230"/>
+      </g>
+      <text class="t" x="118" y="236">7</text>
+      <text class="t" x="8" y="146">7</text>
+      <text class="tr" x="258" y="50">30 deep</text>
+      <text class="ts" x="340" y="100">30 = 2×5 + 20</text>
+      <text class="ts" x="340" y="122">(2 boxes × 5) + 20 classes</text>
+    </svg>
+    <figcaption>the entire output of YOLOv1</figcaption>
+  </figure>
+  <p>Each cell: B·5 + C = 2×5 + 20 = <b>30</b> numbers.</p>
+  <p>Whole grid: 7 × 7 × 30 = <span class="circ">1,470</span> numbers.</p>
+  <p><b>That's it. That's the entire output of YOLOv1 for one image</b> — a <span class="y">7×7×30 tensor</span>.</p>
+
+  <h3>3.6 The network (just the shape)</h3>
+  <ul>
+    <li>24 conv layers + 2 fully connected layers, alternating 1×1 (channel squeeze) and 3×3 (spatial) convs.</li>
+    <li>Activation: leaky ReLU</li>
+  </ul>
+  <div class="eq">φ(x) = x &nbsp; if x &gt; 0 &nbsp;&nbsp;|&nbsp;&nbsp; 0.1x &nbsp; otherwise</div>
+  <ul>
+    <li>Image shrinks: 448 → 224 → 112 → 56 → 28 → 14 → 7. That's 6 halvings → 2⁶ = 64 → exactly why a 448px image gives a 7×7 grid. <span class="tick">✓</span> Connects two things I thought were unrelated.</li>
+    <li>Final feature map 7×7×1024 → flatten to 50,176 → FC 4096 → FC 1470 → reshape to 7×7×30.</li>
+  </ul>
+  <div class="note">First FC layer alone ≈ <b>205 million</b> weights. Most of the model's size lives there (later versions get rid of this).</div>
+
+  <h3>3.7 The loss function — slow down here</h3>
+  <p>Naive idea: sum-squared error everywhere. The paper patches each problem with it.</p>
+  <p><b>Notation:</b></p>
+  <ul>
+    <li>hat = predicted, no hat = ground truth</li>
+    <li><span class="m">𝟙<sup>obj</sup><sub>ij</sub></span> = 1 if box <i>j</i> in cell <i>i</i> is "responsible" (object's center is in cell <i>i</i> AND this box has the best IoU of the cell's boxes)</li>
+    <li><span class="m">𝟙<sup>noobj</sup><sub>ij</sub> = 1 − 𝟙<sup>obj</sup><sub>ij</sub></span></li>
+  </ul>
+
+  <div class="eq box left">
+    ℒ = λ<sub>coord</sub> Σ<sub>i,j</sub> 𝟙<sup>obj</sup><sub>ij</sub> [ (x<sub>i</sub> − x&#770;<sub>i</sub>)² + (y<sub>i</sub> − y&#770;<sub>i</sub>)² ]<br>
+    &nbsp;&nbsp;&nbsp;+ λ<sub>coord</sub> Σ<sub>i,j</sub> 𝟙<sup>obj</sup><sub>ij</sub> [ (√w<sub>i</sub> − √w&#770;<sub>i</sub>)² + (√h<sub>i</sub> − √h&#770;<sub>i</sub>)² ]<br>
+    &nbsp;&nbsp;&nbsp;+ Σ<sub>i,j</sub> 𝟙<sup>obj</sup><sub>ij</sub> (C<sub>i</sub> − C&#770;<sub>i</sub>)²<br>
+    &nbsp;&nbsp;&nbsp;+ λ<sub>noobj</sub> Σ<sub>i,j</sub> 𝟙<sup>noobj</sup><sub>ij</sub> (C<sub>i</sub> − C&#770;<sub>i</sub>)²<br>
+    &nbsp;&nbsp;&nbsp;+ Σ<sub>i</sub> 𝟙<sup>obj</sup><sub>i</sub> Σ<sub>c</sub> (p<sub>i</sub>(c) − p&#770;<sub>i</sub>(c))²
+  </div>
+
+  <p>Five parts. Each <span class="y">in my own words</span>, like I'd explain to a friend:</p>
+  <ol>
+    <li><b>Center error.</b> How far off is my predicted (x, y) from the truth. Only counted for the responsible box.</li>
+    <li><b>Size error, but with square roots — why??</b> (see below)</li>
+    <li><b>Confidence error (object present).</b> Target = actual IoU.</li>
+    <li><b>Confidence error (no object).</b> Target = 0. <u>Why down-weighted</u> (λ<sub>noobj</sub> = 0.5)? Most of the 49 cells are empty in a typical photo. If I don't down-weight, the huge number of "nothing here" cells could dominate training and the model just learns to always predict "empty." Classic class-imbalance problem, solved by weighting.</li>
+    <li><b>Classification error.</b> Squared error on class probs, only where an object exists.</li>
+  </ol>
+  <p>Weights used: <span class="m">λ<sub>coord</sub> = 5</span> (care a lot about location) and <span class="m">λ<sub>noobj</sub> = 0.5</span> (care less about empty background).</p>
+
+  <h4>Why square roots on size?</h4>
+  <p>This one confused me at first.</p>
+  <ul>
+    <li>Big box: true w = 0.5, predicted 0.45 → error 0.05</li>
+    <li>Small box: true w = 0.1, predicted 0.05 → error 0.05 (same absolute error!)</li>
+    <li>Plain squared error treats both the same: 0.05² = 0.0025.</li>
+    <li>But 0.05 off on a small box is proportionally way worse (half its size!) than on a big box.</li>
+  </ul>
+  <div class="tw">
+    <table>
+      <tr><th>box</th><th>√ difference</th><th>squared</th></tr>
+      <tr><td>Big</td><td>√0.5 − √0.45 = 0.7071 − 0.6708 = 0.0363</td><td class="n">0.0013</td></tr>
+      <tr class="hot"><td>Small</td><td>√0.1 − √0.05 = 0.3162 − 0.2236 = 0.0926</td><td class="n">0.0086</td></tr>
+    </table>
+  </div>
+  <p>Small-box mistake now costs <span class="circ">~6.5×</span> more.</p>
+  <div class="note r"><i>Why does sqrt do this?</i> The slope of √w is <span class="fr" style="font-size:22px"><span>1</span><span>2√w</span></span> — steeper when w is small. Same input error → bigger output change when w is small. Exactly the property I want.</div>
+
+  <h3>3.8 Full worked example of the loss</h3>
+  <div class="box">
+    <p class="tight"><b>Ground truth</b> (my dog): x = 0.6875, y = 0.125, w = 0.3571, h = 0.5</p>
+    <p class="tight"><b>Prediction:</b> x̂ = 0.60, ŷ = 0.20, ŵ = 0.30, ĥ = 0.45, confidence Ĉ = 0.60 (true IoU = 0.70)</p>
+    <p class="tight"><b>Class pred:</b> dog 0.8, cat 0.1 (true: dog = 1, cat = 0)</p>
+    <p class="tight"><b>Empty-cell box</b> predicts confidence 0.2</p>
+  </div>
+  <div class="tw">
+    <table>
+      <tr><th>part</th><th>calculation</th><th class="n">value</th></tr>
+      <tr><td>Center</td><td>5 × [(0.0875)² + (0.075)²] = 5 × 0.01328</td><td class="n">0.0664</td></tr>
+      <tr><td>Size</td><td>5 × [(0.5976 − 0.5477)² + (0.7071 − 0.6708)²] = 5 × 0.00381</td><td class="n">0.0190</td></tr>
+      <tr><td>Conf (obj)</td><td>(0.70 − 0.60)²</td><td class="n">0.0100</td></tr>
+      <tr><td>Conf (no obj)</td><td>0.5 × (0 − 0.2)²</td><td class="n">0.0200</td></tr>
+      <tr><td>Class</td><td>(1 − 0.8)² + (0 − 0.1)²</td><td class="n">0.0500</td></tr>
+      <tr class="hot"><td><b>Total</b></td><td></td><td class="n"><b>≈ 0.1654</b></td></tr>
+    </table>
+  </div>
+  <p>This is one image's loss. Training = do this over thousands of images, average, backprop, repeat.</p>
+
+  <h3>3.9 Inference: raw output → actual boxes</h3>
+  <ol>
+    <li>Compute class-specific confidence for every one of the 7 × 7 × 2 = <b>98</b> boxes.</li>
+    <li>Drop anything below a threshold (e.g. 0.25).</li>
+    <li>Run <span class="y">Non-Max Suppression (NMS)</span> to kill duplicates.</li>
+  </ol>
+
+  <h4>NMS algorithm, in my own words</h4>
+  <ol>
+    <li>Sort remaining boxes (of one class) by score, highest first.</li>
+    <li>Keep the top one. Delete every other box that overlaps it too much (IoU &gt; 0.5, typically).</li>
+    <li>Move to the next surviving box, repeat.</li>
+  </ol>
+
+  <figure class="fig">
+    <svg viewBox="0 0 370 350" role="img" aria-label="Three boxes A, B and C; B overlaps A heavily and gets deleted, C is separate and kept">
+      <g filter="url(#wob)">
+        <rect class="sg" x="30" y="30" width="100" height="100"/>
+        <rect class="sr sd" x="40" y="35" width="100" height="100"/>
+        <rect class="sg" x="230" y="230" width="100" height="100"/>
+        <path class="sr" d="M60 55 L120 115 M120 55 L60 115" style="opacity:.0"/>
+      </g>
+      <text class="tg" x="34" y="24">A · 0.90</text>
+      <text class="tr" x="60" y="162">B · 0.80  deleted</text>
+      <text class="tg" x="234" y="224">C · 0.60</text>
+      <text class="ts" x="150" y="86">IoU(A,B) = 0.747 &gt; 0.5</text>
+      <text class="ts" x="150" y="270" style="font-size:16px">IoU(A,C) = 0 → keep</text>
+    </svg>
+    <figcaption>A (solid green) kills B (dashed red). C is a different dog.</figcaption>
+  </figure>
+
+  <div class="box">
+    <p class="tight">A: score 0.90, box (100, 100, 200, 200)</p>
+    <p class="tight">B: score 0.80, box (110, 105, 210, 205)</p>
+    <p class="tight">C: score 0.60, box (300, 300, 400, 400)</p>
+  </div>
+  <p>Keep A. Compare B vs A: overlap = 90 × 95 = 8,550. Union = 20,000 − 8,550 = 11,450. IoU = <b>0.747</b> &gt; 0.5 → <span class="p">delete B</span> (duplicate of the same dog).</p>
+  <p>Compare C vs A: no overlap → IoU = 0 → <span class="g">keep C</span> (a different dog).</p>
+  <p><b>Final: A and C survive.</b></p>
+
+  <h3>3.10 Results (VOC 2007)</h3>
+  <div class="tw">
+    <table>
+      <tr><th>Model</th><th class="n">mAP</th><th class="n">Speed</th></tr>
+      <tr><td>Fast YOLO</td><td class="n">52.7</td><td class="n">155 FPS</td></tr>
+      <tr class="hot"><td>YOLOv1</td><td class="n">63.4</td><td class="n">45 FPS</td></tr>
+      <tr><td>Faster R-CNN</td><td class="n">73.2</td><td class="n">7 FPS</td></tr>
+    </table>
+  </div>
+  <p>Trade-off: less accurate than Faster R-CNN, but ~6× faster. Interesting: YOLO made <i>more</i> localization mistakes but <i>far fewer</i> background false-positives (4.75% vs 13.6%) — it sees the whole image at once and has context, unlike region-based methods that only see a crop.</p>
+
+  <h3>3.11 Weaknesses — my own summary</h3>
+  <ul>
+    <li>1 class per cell → struggles with small/clustered objects (e.g. flock of birds)</li>
+    <li>No shape priors → struggles with unusual aspect ratios</li>
+    <li>Only 7×7 predictions → bad at small objects (too coarse)</li>
+    <li>Square-root trick is a patch, not a real fix — doesn't directly optimize IoU</li>
+  </ul>
+  <div class="note r">Every later YOLO version attacks one of these four bullets. Keep as a checklist for the next sections!</div>
+  <span class="pg">p. 4–9</span>
+</section>
+
+<!-- ============ 4 ============ -->
+<section class="sheet" id="s4">
+  <h2>4. YOLOv2 / YOLO9000 (2016–17)</h2>
+  <p class="sub" style="margin-top:-8px">fixing "no shape priors"</p>
+  <p>Key additions:</p>
+  <ul>
+    <li><b>Batch normalization</b> on every conv layer (better accuracy, dropped dropout)</li>
+    <li><b>Fully convolutional</b> — no more giant FC layers. Grid now 13×13 @ 416×416 input.</li>
+    <li><b class="red">Anchor boxes</b> ← the big one</li>
+    <li><b>Multi-scale training</b> — randomly resize input every few batches (320 to 608, multiples of 32)</li>
+    <li>New backbone: <b>Darknet-19</b></li>
+  </ul>
+
+  <h3>4.1 Where do anchor shapes come from?</h3>
+  <p>Idea: don't predict a box from nothing — predict a <span class="y">tweak</span> to one of a few pre-picked "typical" shapes (anchors).</p>
+  <p>To find good anchor shapes: run <b>k-means</b> on all ground-truth boxes in the dataset, but with this distance:</p>
+  <div class="eq box">d(box, centroid) = 1 − IoU(box, centroid)</div>
+  <p><i>Why not plain Euclidean distance?</i> It would let big boxes dominate the clustering (a box 10px off but huge looks "far" in raw pixels even though its shape is basically identical). Using 1 − IoU clusters by <b>shape</b>, which is what matters. Paper found <b>k = 5</b> anchors a good balance.</p>
+
+  <h3>4.2 Decoding an anchor-based prediction</h3>
+  <p>Network outputs raw numbers t<sub>x</sub>, t<sub>y</sub>, t<sub>w</sub>, t<sub>h</sub>, t<sub>o</sub> per anchor:</p>
+  <div class="eq box">
+    b<sub>x</sub> = σ(t<sub>x</sub>) + c<sub>x</sub> &nbsp;&nbsp; b<sub>y</sub> = σ(t<sub>y</sub>) + c<sub>y</sub><br>
+    b<sub>w</sub> = p<sub>w</sub> e<sup>t<sub>w</sub></sup> &nbsp;&nbsp; b<sub>h</sub> = p<sub>h</sub> e<sup>t<sub>h</sub></sup><br>
+    Pr(Object) · IoU = σ(t<sub>o</sub>)
+  </div>
+  <ul>
+    <li>(c<sub>x</sub>, c<sub>y</sub>) = cell's top-left corner (grid units)</li>
+    <li>(p<sub>w</sub>, p<sub>h</sub>) = the anchor's own width/height</li>
+    <li>σ = sigmoid, squishes anything into (0, 1)</li>
+  </ul>
+  <p><b>Why sigmoid on the center?</b> Forces the predicted center to stay <span class="y">inside its own cell</span>. Without it, early predictions could fly anywhere and training gets unstable.</p>
+  <p><b>Why exponential on the size?</b> (1) guarantees a positive number (no negative width!), and (2) t<sub>w</sub> = 0 ⇒ b<sub>w</sub> = p<sub>w</sub>, i.e. "no change" naturally means "just use the anchor." Predicting a <i>multiplicative</i> adjustment to a known shape is easier than predicting absolute size from scratch.</p>
+
+  <h4>My own numbers</h4>
+  <p>Cell (4, 3), anchor width p<sub>w</sub> = 2.0, network outputs t<sub>x</sub> = 0.2, t<sub>y</sub> = −1.0, t<sub>w</sub> = 0.3.</p>
+  <div class="eq left">
+    b<sub>x</sub> = σ(0.2) + 4 = 0.5498 + 4 = <b>4.5498</b><br>
+    b<sub>y</sub> = σ(−1.0) + 3 = 0.2689 + 3 = <b>3.2689</b><br>
+    b<sub>w</sub> = 2.0 × e<sup>0.3</sup> = 2.0 × 1.3499 = <b>2.700</b>
+  </div>
+  <p>Result @ VOC 2007: <span class="circ">76.8 mAP @ 67 FPS</span>. Big jump from v1's 63.4.</p>
+  <p class="dim">(The "9000" part = trained jointly on detection + ImageNet classification via a label hierarchy, so it could detect way more classes than it had boxes for. Side note, not the main architectural story.)</p>
+  <span class="pg">p. 10–11</span>
+</section>
+
+<!-- ============ 5 ============ -->
+<section class="sheet" id="s5">
+  <h2>5. YOLOv3 (2018)</h2>
+  <p class="sub" style="margin-top:-8px">fixing "bad at small objects"</p>
+  <p>Additions:</p>
+  <ul>
+    <li>Deeper backbone: <b>Darknet-53</b> (with residual/skip connections)</li>
+    <li><b>Three prediction scales</b>: strides 32, 16, 8 — coarse map for big objects, fine map for small ones</li>
+    <li>9 anchors total (3 per scale)</li>
+    <li>Independent logistic classifiers instead of one softmax (an object can have more than one label — e.g. "person" and "woman" both true — trained with binary cross-entropy)</li>
+  </ul>
+
+  <h4>Count the candidate boxes myself</h4>
+  <p>416×416 input, COCO (80 classes). Grids: 13×13, 26×26, 52×52. Per cell: 3 anchors × (4 box + 1 obj + 80 class) = 3 × 85 = <b>255</b> channels.</p>
+  <div class="eq box">(13² + 26² + 52²) × 3 = (169 + 676 + 2704) × 3 = 3549 × 3 = <b>10,647</b></div>
+  <p>vs YOLOv1's 98 candidates. <span class="y">~100× more candidates</span> → much better at catching small stuff.</p>
+  <div class="note">Side note: Joseph Redmon (original author) stepped away from CV research around here over concerns about military applications. From v4 onward, "YOLO" is a community name, not one team's official lineage.</div>
+  <span class="pg">p. 12</span>
+</section>
+
+<!-- ============ 6 ============ -->
+<section class="sheet" id="s6">
+  <h2>6. The IoU-loss family</h2>
+  <p class="sub" style="margin-top:-8px">fixing "square-root trick isn't real IoU optimization"</p>
+  <p>Plain 1 − IoU as a loss has a real flaw: if boxes don't overlap at all, IoU = 0 and <span class="p">the gradient is also 0</span> → the model gets zero signal on which direction to move. Needs fixing.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 340 270" role="img" aria-label="Boxes A and B with a dashed enclosing box C and a line between their centers">
+      <g filter="url(#wob)">
+        <rect class="sr sd" x="36" y="36" width="240" height="192" style="stroke-width:2"/>
+        <rect class="si" x="36" y="36" width="160" height="160"/>
+        <rect class="sg" x="116" y="68" width="160" height="160"/>
+        <path class="sr" d="M116 116 L196 148"/>
+        <circle cx="116" cy="116" r="4" style="fill:var(--red)"/>
+        <circle cx="196" cy="148" r="4" style="fill:var(--red)"/>
+      </g>
+      <text class="t" x="46" y="62">A</text>
+      <text class="tg" x="244" y="218">B</text>
+      <text class="tr" x="212" y="52">C (enclosing)</text>
+      <text class="tr" x="130" y="134" style="font-size:18px">ρ</text>
+      <text class="ts" x="36" y="256" style="font-size:16px">C = 150 × 120 (in real units) · centers (150,150) & (200,170)</text>
+    </svg>
+    <figcaption>dashed red = smallest box C that holds both</figcaption>
+  </figure>
+
+  <h3>GIoU (Generalized IoU)</h3>
+  <p>Draw the smallest box C that encloses both A and B:</p>
+  <div class="eq box">GIoU = IoU − <span class="fr"><span>Area(C) − Area(A ∪ B)</span><span>Area(C)</span></span></div>
+  <p>Now even non-overlapping boxes get a gradient (shrink the "wasted space" in C).</p>
+  <p>My example (A, B from section 2): enclosing box = 150 × 120 = 18,000.</p>
+  <div class="eq">GIoU = 0.25 − <span class="fr"><span>18,000 − 16,000</span><span>18,000</span></span> = 0.25 − 0.111 = <b>0.139</b></div>
+
+  <h3>DIoU (Distance IoU)</h3>
+  <p>Adds a penalty for how far apart the <b>centers</b> are:</p>
+  <div class="eq box">DIoU = IoU − <span class="fr"><span>ρ²</span><span>c²</span></span></div>
+  <p>ρ = distance between centers, c = diagonal of the enclosing box.</p>
+  <p>Centers: (150, 150) and (200, 170). ρ² = 50² + 20² = 2900. c² = 150² + 120² = 36,900.</p>
+  <div class="eq">DIoU = 0.25 − <span class="fr"><span>2900</span><span>36,900</span></span> = 0.25 − 0.079 = <b>0.171</b></div>
+
+  <h3>CIoU (Complete IoU)</h3>
+  <p>Adds one more term for <b>aspect ratio mismatch</b>:</p>
+  <div class="eq box left">
+    CIoU = IoU − <span class="fr"><span>ρ²</span><span>c²</span></span> − α v<br>
+    v = <span class="fr"><span>4</span><span>π²</span></span> ( arctan <span class="fr"><span>w<sup>gt</sup></span><span>h<sup>gt</sup></span></span> − arctan <span class="fr"><span>w</span><span>h</span></span> )² &nbsp;&nbsp;
+    α = <span class="fr"><span>v</span><span>(1 − IoU) + v</span></span>
+  </div>
+  <p>In my example both boxes are square (100×100), so v = 0 → CIoU = DIoU = <b>0.171</b> here.</p>
+  <p>Loss used in practice: <span class="y">1 − CIoU</span>. YOLOv4 popularized this, and it's stuck around since.</p>
+  <div class="box red">
+    <p><b>Memory hook:</b><br>
+    IoU → <b>GIoU</b> (fixes zero-gradient) → <b>DIoU</b> (adds center-distance) → <b>CIoU</b> (adds shape-match).<br>
+    Each one adds a term on top of the last.</p>
+  </div>
+  <span class="pg">p. 13–14</span>
+</section>
+
+<!-- ============ 7 ============ -->
+<section class="sheet" id="s7">
+  <h2>7. YOLOv4 → v10 — speed run</h2>
+  <p>Don't need to derive every one in depth, just know what each one changed:</p>
+  <ul>
+    <li><b>v4 (2020)</b> — organized tricks into "bag of freebies" (Mosaic aug, CIoU loss — free accuracy) and "bag of specials" (small architecture add-ons). CSPDarknet53 backbone. 43.5 AP @ ~65 FPS (V100).</li>
+    <li><b>v5 (2020, Ultralytics)</b> — not a research paper, a clean <span class="y">PyTorch implementation</span>. Made YOLO easy for regular developers. Huge for adoption.</li>
+    <li><b>v6 (2022, Meituan)</b> — hardware-friendly reparameterizable blocks, industrial/edge focus.</li>
+    <li><b>v7 (2022)</b> — E-ELAN (efficient layer aggregation), "trainable bag of freebies."</li>
+    <li><b>v8 (2023, Ultralytics)</b> — <span class="p">anchor-free (!)</span> + decoupled head (separate branch for box vs class). Becomes the base design for everything after.</li>
+    <li><b>v9 (2024)</b> — PGI (programmable gradient info) + GELAN, aimed at not losing information in deep networks.</li>
+    <li><b>v10 (2024, Tsinghua)</b> — first YOLO trained to give <b>one prediction per object</b>, i.e. <span class="p">NMS-free</span>.</li>
+  </ul>
+  <div class="note">Checklist mentality: <b>v8 removed anchors. v10 removed NMS.</b> Both get carried into v11 and beyond.</div>
+  <span class="pg">p. 15</span>
+</section>
+
+<!-- ============ 8 ============ -->
+<section class="sheet" id="s8">
+  <h2>8. YOLO11 (2024, Ultralytics)</h2>
+  <p class="sub" style="margin-top:-8px">the current "safe default"</p>
+  <p>Three structural changes vs v8:</p>
+  <ol>
+    <li><b>C3k2 block</b> replaces C2f (backbone/neck)</li>
+    <li><b>C2PSA</b> (attention block) inserted after SPPF</li>
+    <li>Lighter, depthwise-separable convs in the head's classification branch</li>
+  </ol>
+
+  <h3>8.1 C3k2 — what's a CSP block, really?</h3>
+  <p>CSP = Cross-Stage Partial. Idea: split incoming channels in two. One half skips straight through untouched. The other half goes through the expensive bottleneck layers. Concatenate both halves at the end.</p>
+  <p><b>Why:</b> cheaper (only half the channels do heavy work) + better gradient flow (skip path). C3k2 is a faster variant where the inner unit can switch between "light" and "heavier" versions depending on the stage — shallow layers stay cheap, deep layers get more power.</p>
+
+  <h3>8.2 SPPF then C2PSA</h3>
+  <p class="sub" style="margin-top:-8px">seeing wider, then seeing "smarter"</p>
+  <p><b>SPPF (Spatial Pyramid Pooling — Fast):</b> apply a 5×5 max-pool, then apply it again to its own output, then again. Each pass widens the effective receptive field: 5×5 → 9×9 → 13×13. Concatenate the original + all 3 pooled versions → the next layer sees multiple context sizes at once, cheaply.</p>
+  <p><b>C2PSA (attention):</b> convolutions only look at a small local neighborhood. Attention lets every position ask <i>"which other positions matter to me?"</i></p>
+  <div class="eq box">Attention(Q, K, V) = softmax( <span class="fr"><span>Q Kᵀ</span><span>√d</span></span> ) V</div>
+  <ul>
+    <li><b>Q</b> = query ("what am I looking for")</li>
+    <li><b>K</b> = key ("what do I contain")</li>
+    <li><b>V</b> = value ("what I pass along if picked")</li>
+    <li>Q Kᵀ = similarity scores between every pair of positions</li>
+    <li>√d = scaling so scores don't blow up with dimension size</li>
+    <li>softmax → turns scores into weights summing to 1</li>
+    <li>multiply by V → blend</li>
+  </ul>
+
+  <h4>Tiny example myself: 2 positions, d = 2</h4>
+  <div class="eq left">
+    Q = K = [ 1 0 ; 0 1 ] &nbsp;&nbsp; V = [ 2 0 ; 0 4 ]
+  </div>
+  <p>Q Kᵀ = I. Divide by √2: diagonal = 0.707, off-diagonal = 0.</p>
+  <p>Position 1's softmax: <span class="fr"><span>e<sup>0.707</sup></span><span>e<sup>0.707</sup> + e<sup>0</sup></span></span> = <b>0.670</b> and <b>0.330</b>.</p>
+  <div class="eq">output₁ = 0.670 × (2, 0) + 0.330 × (0, 4) = <b>(1.34, 1.32)</b></div>
+  <p>So position 1's new representation is a <span class="y">blend of both positions' values</span>, weighted by relevance — not just its own local patch. That's the whole point: distant context helps with small/occluded objects. C2PSA does this only on the smallest feature map (cheap enough to stay real-time).</p>
+
+  <h3>8.3 Lighter head — depthwise-separable convs</h3>
+  <div class="box">
+    <p class="tight">Normal 3×3 conv, 64 → 64 channels: 3×3×64×64 = <b>36,864</b> weights.</p>
+    <p class="tight">Depthwise-separable: per-channel 3×3 (3×3×64 = 576) + 1×1 channel mix (64×64 = 4,096) = <b>4,672</b> weights.</p>
+  </div>
+  <p>≈ <span class="circ">8× fewer</span> weights, similar result. Only used in the classification branch of the head.</p>
+
+  <h3>8.4 Anchor-free head — how does it predict a box with no anchors?</h3>
+  <p>Every position on each feature map (stride 8, 16, 32) predicts <b>distances to the 4 box edges</b> from that point: left, top, right, bottom.</p>
+  <p>At 640×640 input: grids are 80×80, 40×40, 20×20.</p>
+  <div class="eq">6,400 + 1,600 + 400 = <b>8,400</b> candidate predictions total</div>
+
+  <h4>My own worked example</h4>
+  <p>Stride 16, position (col 20, row 10) → pixel center (20.5×16, 10.5×16) = <b>(328, 168)</b>.</p>
+  <p>Predicted distances (stride units): l = 2, t = 3, r = 4, b = 1 → pixels: 32, 48, 64, 16.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 340 250" role="img" aria-label="A point inside a box with arrows to the left, top, right and bottom edges">
+      <g filter="url(#wob)">
+        <rect class="si" x="77" y="64" width="211" height="141"/>
+        <circle cx="148" cy="170" r="5" style="fill:var(--red)"/>
+        <path class="sr" d="M148 170 H80 M90 163 L80 170 L90 177"/>
+        <path class="sr" d="M148 170 V66 M141 76 L148 66 L155 76"/>
+        <path class="sr" d="M148 170 H286 M276 163 L286 170 L276 177"/>
+        <path class="sr" d="M148 170 V203 M141 193 L148 203 L155 193"/>
+      </g>
+      <text class="tr" x="102" y="160">l</text>
+      <text class="tr" x="156" y="120">t</text>
+      <text class="tr" x="212" y="160">r</text>
+      <text class="tr" x="156" y="198">b</text>
+      <text class="t" x="154" y="190" style="opacity:0"> </text>
+      <text class="ts" x="30" y="240" style="font-size:16px">(328,168) → box (296,120) to (392,184)</text>
+    </svg>
+    <figcaption>one point, four distances, one box</figcaption>
+  </figure>
+  <p>Box: (328 − 32, 168 − 48) to (328 + 64, 168 + 16) = (296, 120) to (392, 184) → <b>96 wide, 64 tall</b>.</p>
+
+  <h4>DFL (Distribution Focal Loss)</h4>
+  <p>Instead of predicting one number for each distance, predict a small probability distribution over possible bin values, then take the expected value.</p>
+  <p>Bins 0–3 with probs (0.1, 0.2, 0.6, 0.1) → expected distance = 0(0.1) + 1(0.2) + 2(0.6) + 3(0.1) = <b>1.7</b>.</p>
+  <div class="note r">YOLO26 removes DFL — remember for comparison later!</div>
+
+  <h3>8.5 Task-aligned assignment</h3>
+  <p class="sub" style="margin-top:-8px">which candidate "owns" which object during training?</p>
+  <p>With 8,400 candidates and only a handful of real objects, I need a rule for who trains on what. Score:</p>
+  <div class="eq box">t = s<sup>α</sup> · u<sup>β</sup></div>
+  <p>s = predicted score for the correct class, u = box IoU with truth. Typical α = 0.5, β = 6.</p>
+  <div class="tw">
+    <table>
+      <tr><th>candidate</th><th>s</th><th>u</th><th>calculation</th><th class="n">t</th></tr>
+      <tr class="hot"><td>1</td><td>0.8</td><td>0.7</td><td>0.8<sup>0.5</sup> × 0.7⁶ = 0.894 × 0.118</td><td class="n">0.105</td></tr>
+      <tr><td>2</td><td>0.9</td><td>0.4</td><td>0.949 × 0.0041</td><td class="n">0.0039</td></tr>
+    </table>
+  </div>
+  <p>Even though candidate 2 has a <i>higher class score</i>, its much worse IoU tanks its total because of the high exponent (β = 6) on u. <span class="y">Lesson: this assigner cares much more about accurate localization than class confidence alone.</span></p>
+
+  <h3>8.6 Sizes and results — table to memorize</h3>
+  <div class="tw">
+    <table>
+      <tr><th>Size</th><th class="n">Params</th><th class="n">GFLOPs</th><th class="n">COCO mAP(50-95)</th></tr>
+      <tr><td>n</td><td class="n">2.6M</td><td class="n">6.6</td><td class="n">39.5</td></tr>
+      <tr><td>s</td><td class="n">9.5M</td><td class="n">21.7</td><td class="n">47.0</td></tr>
+      <tr><td>m</td><td class="n">20.1M</td><td class="n">68.5</td><td class="n">51.5</td></tr>
+      <tr><td>l</td><td class="n">25.4M</td><td class="n">87.6</td><td class="n">53.4</td></tr>
+      <tr><td>x</td><td class="n">57.0M</td><td class="n">196.0</td><td class="n">54.7</td></tr>
+    </table>
+  </div>
+  <p>Fact to remember: YOLO11m uses <span class="g">22% fewer params</span> than YOLOv8m but scores <span class="g">1.3 mAP higher</span>. Still needs NMS though — that's the next thing to get removed.</p>
+  <span class="pg">p. 16–21</span>
+</section>
+
+<!-- ============ 9 ============ -->
+<section class="sheet" id="s9">
+  <h2>9. YOLO12, YOLO13, YOLO26</h2>
+  <p class="sub" style="margin-top:-8px">quick notes</p>
+  <ul>
+    <li><b>YOLO12 (2025)</b> — heavier attention (area attention + R-ELAN). ~40.5 mAP nano, ~1.1 pt above YOLO11-n. Downside noted by Ultralytics itself: training instability, higher memory, slower CPU — recommended for research/benchmarking, not production.</li>
+    <li><b>YOLO13 (2025, iMoonLab)</b> — <span class="y">hypergraphs</span>: one "edge" can connect <i>many</i> nodes at once (vs normal attention which is pairwise). Claimed +3.0 mAP over YOLO11-n, +1.5 over YOLO12-n.</li>
+    <li><b>YOLO26 (Jan 2026, Ultralytics)</b> — direction changes back toward <i>simplicity + deployment</i>: native NMS-free, <span class="p">removes DFL entirely</span>, new optimizer (MuSGD), progressive loss, STAL label assignment. Up to 43% faster CPU inference than YOLO11.</li>
+  </ul>
+  <div class="box red">
+    <p><b>Big-picture note to self:</b> YOLO26 closes a loop — v1 killed the region-proposal pipeline, v8 killed anchors, v10 killed NMS's <i>necessity</i>, and now v26 kills NMS <i>and</i> DFL as standard parts of the head. The whole family's story is <span class="y">"remove pipeline stages,"</span> not just "add more layers."</p>
+  </div>
+  <span class="pg">p. 22</span>
+</section>
+
+<!-- ============ 10 ============ -->
+<section class="sheet" id="s10">
+  <h2>10. Master comparison table</h2>
+  <p class="sub" style="margin-top:-8px">all versions, 2026 view</p>
+  <div class="tw">
+    <table>
+      <tr><th>Version</th><th>Year</th><th>Main new idea</th><th>Reported accuracy</th><th>Remember it for…</th></tr>
+      <tr><td>v1</td><td>2015</td><td>Grid, single pass</td><td>63.4 mAP@0.5 (VOC)</td><td>The original idea</td></tr>
+      <tr><td>v2/9000</td><td>2016</td><td>Anchors via k-means</td><td>76.8 mAP@0.5 (VOC)</td><td>Anchors, batch norm</td></tr>
+      <tr><td>v3</td><td>2018</td><td>3 scales, Darknet-53</td><td>33.0 AP (COCO)</td><td>Fixed small objects</td></tr>
+      <tr><td>v4</td><td>2020</td><td>CSPDarknet, Mosaic, CIoU</td><td>43.5 AP</td><td>"Bag of freebies"</td></tr>
+      <tr><td>v5</td><td>2020</td><td>PyTorch tooling</td><td>28.0–50.7 (n→x)</td><td>Adoption/usability</td></tr>
+      <tr><td>v6</td><td>2022</td><td>Reparam blocks</td><td>~37.5–52.8</td><td>Industrial/edge</td></tr>
+      <tr><td>v7</td><td>2022</td><td>E-ELAN</td><td>51.2–56.8</td><td>Efficient training</td></tr>
+      <tr><td>v8</td><td>2023</td><td>Anchor-free, decoupled head</td><td>37.3–53.9</td><td>Base for v11+</td></tr>
+      <tr><td>v9</td><td>2024</td><td>PGI + GELAN</td><td>38.3–55.6</td><td>Gradient flow</td></tr>
+      <tr><td>v10</td><td>2024</td><td>NMS-free training</td><td>38.5–54.4</td><td>First NMS-free</td></tr>
+      <tr class="hot"><td><b>v11</b></td><td>2024</td><td>C3k2 + C2PSA attention</td><td>39.5–54.7</td><td>Current default</td></tr>
+      <tr><td>v12</td><td>2025</td><td>Area attention</td><td>~40.5–55</td><td>Research-heavy</td></tr>
+      <tr><td>v13</td><td>2025</td><td>Hypergraph correlation</td><td>~41.6–48</td><td>Global context</td></tr>
+      <tr class="hot"><td><b>v26</b></td><td>2026</td><td>NMS-free + DFL-free, MuSGD</td><td>~40–57.5</td><td>Latest, edge-first</td></tr>
+      <tr><td>v27</td><td>TBD</td><td>In dev</td><td>—</td><td>Not released yet</td></tr>
+    </table>
+  </div>
+  <div class="note">Numbers are from each project's own reported benchmarks — different eval setups, so treat as a rough trend, not a fair race. VOC and COCO numbers also aren't directly comparable to each other.</div>
+  <span class="pg">p. 23</span>
+</section>
+
+<!-- ============ 11 ============ -->
+<section class="sheet" id="s11">
+  <h2>11. Metrics — precision, recall, mAP</h2>
+  <p class="sub" style="margin-top:-8px">so the table above actually means something to me</p>
+  <div class="eq box">
+    Precision = <span class="fr"><span>TP</span><span>TP + FP</span></span>
+    &nbsp;&nbsp;&nbsp;
+    Recall = <span class="fr"><span>TP</span><span>TP + FN</span></span>
+  </div>
+  <ul>
+    <li><b>TP</b> = correct detection (IoU past threshold + right class)</li>
+    <li><b>FP</b> = wrong detection</li>
+    <li><b>FN</b> = missed real object</li>
+  </ul>
+
+  <h4>My example</h4>
+  <p>3 real dogs, 5 detections ranked by confidence: TP, TP, FP, TP, FP.</p>
+  <div class="tw">
+    <table>
+      <tr><th>Rank</th><th>Result</th><th class="n">Precision</th><th class="n">Recall</th></tr>
+      <tr><td>1</td><td class="grn">TP</td><td class="n">1.00</td><td class="n">0.33</td></tr>
+      <tr><td>2</td><td class="grn">TP</td><td class="n">1.00</td><td class="n">0.67</td></tr>
+      <tr><td>3</td><td class="red">FP</td><td class="n">0.67</td><td class="n">0.67</td></tr>
+      <tr><td>4</td><td class="grn">TP</td><td class="n">0.75</td><td class="n">1.00</td></tr>
+      <tr><td>5</td><td class="red">FP</td><td class="n">0.60</td><td class="n">1.00</td></tr>
+    </table>
+  </div>
+  <p>AP = area under the precision-recall curve (best precision at each recall level or above):</p>
+  <div class="eq box">AP = 0.333(1.00) + 0.333(1.00) + 0.333(0.75) = <b>0.917</b></div>
+  <p><b>mAP</b> = average AP across all classes.</p>
+  <ul>
+    <li><b>mAP@0.5</b> = one IoU threshold.</li>
+    <li><b>mAP@0.5:0.95</b> = average over 10 thresholds (0.5 to 0.95) — much stricter, rewards tight boxes.</li>
+  </ul>
+  <p>That's why COCO numbers "look lower" than VOC numbers for similar-quality models.</p>
+  <span class="pg">p. 24</span>
+</section>
+
+<!-- ============ 12 ============ -->
+<section class="sheet" id="s12">
+  <h2>12. Practical cheat-sheet</h2>
+  <p class="sub" style="margin-top:-8px">for actually running this myself</p>
+<div class="card">pip install ultralytics</div>
+<div class="card"><span class="c"># n/s/m/l/x sizes</span>
+from ultralytics import YOLO
+model = YOLO("yolo11n.pt")
+results = model("image.jpg")</div>
+  <p>Label format (one .txt per image, one line per box):</p>
+<div class="card">class_id  x_center  y_center  width  height   <span class="c"># all normalized 0-1</span></div>
+  <p>— literally the same normalization I derived by hand in section 3.2.</p>
+<div class="card">model.train(data="data.yaml", epochs=100, imgsz=640)
+model.val()
+model.export(format="onnx")</div>
+
+  <h3>Reminders to self</h3>
+  <ul>
+    <li>Start from <b>pretrained weights</b>, don't train from scratch (transfer learning).</li>
+    <li><span class="y">Label quality &gt; model size.</span></li>
+    <li>Watch validation mAP, not just training loss, to catch overfitting.</li>
+    <li>Small objects need bigger <span class="m">imgsz</span>.</li>
+    <li>Confidence threshold is a precision/recall dial — pick it for the actual use case.</li>
+  </ul>
+  <span class="pg">p. 25</span>
+</section>
+
+<!-- ============ 13 ============ -->
+<section class="sheet" id="s13">
+  <h2>13. One-paragraph summary</h2>
+  <p class="sub" style="margin-top:-8px">can I explain this without notes?</p>
+  <div class="box">
+    <p>YOLOv1 divided an image into a grid and made each cell responsible for objects centered in it, predicting boxes and classes in one pass instead of a slow multi-stage pipeline. v2 added anchor box priors found via k-means. v3 added multiple prediction scales to catch small objects. Along the way, IoU-based losses (GIoU → DIoU → CIoU) replaced the awkward square-root size loss. v4–v7 refined training tricks and efficiency. v8 removed anchors entirely and split the head into box/class branches. v9–v10 improved gradient flow and made NMS optional. v11 added CSP-style C3k2 blocks and a small attention module (C2PSA) for better context, staying anchor-free and needing NMS. v12–v13 pushed further into attention/hypergraphs for accuracy at some efficiency cost. v26 went back to simplicity: NMS-free and DFL-free by design, tuned for edge devices. The whole story, version after version, is <span class="y">fewer separate stages and more of the work happening inside one clean forward pass.</span></p>
+  </div>
+  <p class="sub" style="font-size:34px;line-height:64px;text-align:right;margin:0 6px 0 0">the end — for now ✎</p>
+  <div class="signoff">
+    <span class="sig">— Rajdip Bera</span>
+    <p class="role"><a class="by-link" href="https://me-rajdip.github.io/My-Profile/" target="_blank" rel="noopener">Rajdip Bera | AI/ML Developer &amp; Researcher</a></p>
+  </div>
+  <span class="pg">p. 26</span>
+</section>
+
+</main>
+
+<footer class="colophon">
+  Written by <a class="by-link" href="https://me-rajdip.github.io/My-Profile/" target="_blank" rel="noopener">Rajdip Bera | AI/ML Developer &amp; Researcher</a>
+  <small>Hand-drawn style study notes on YOLO object detection, v1 → 2026.</small>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  root.classList.add('js');
+  var reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---------- theme (remembered) ---------- */
+  var btn=document.getElementById('theme');
+  try{var saved=localStorage.getItem('yolo-nb-theme');if(saved)root.setAttribute('data-theme',saved)}catch(_){}
+  function isDark(){
+    var t=root.getAttribute('data-theme');
+    if(t) return t==='dark';
+    return window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function label(){btn.textContent=isDark()?'☀ day mode':'☾ night mode'}
+  btn.addEventListener('click',function(){
+    var next=isDark()?'light':'dark';
+    root.setAttribute('data-theme',next);label();
+    try{localStorage.setItem('yolo-nb-theme',next)}catch(_){}
+  });
+  label();
+
+  /* ---------- eased smooth scrolling ---------- */
+  var bar=document.querySelector('.bar'),raf=null;
+  function barH(){return bar?bar.offsetHeight:56}
+  function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+  function cancel(){if(raf){cancelAnimationFrame(raf);raf=null}}
+  ['wheel','touchstart','keydown','mousedown'].forEach(function(ev){
+    window.addEventListener(ev,cancel,{passive:true});
+  });
+  function glide(y){
+    cancel();
+    var start=window.pageYOffset,dist=y-start;
+    if(reduce||Math.abs(dist)<2){window.scrollTo(0,y);return}
+    var dur=Math.min(1200,Math.max(500,Math.abs(dist)*.4)),t0=null;
+    function step(ts){
+      if(t0===null)t0=ts;
+      var p=Math.min(1,(ts-t0)/dur);
+      window.scrollTo(0,start+dist*ease(p));
+      raf=p<1?requestAnimationFrame(step):null;
+    }
+    raf=requestAnimationFrame(step);
+  }
+  function docTop(el){var y=0;while(el){y+=el.offsetTop;el=el.offsetParent}return y}
+  function goto(id,push){
+    var el=id==='top'||!id?document.body:document.getElementById(id);
+    if(!el) return false;
+    var y=(id==='top'||!id)?0:docTop(el)-barH()-14;
+    glide(Math.max(0,y));
+    try{if(push)history.replaceState(null,'',id&&id!=='top'?'#'+id:location.pathname+location.search)}catch(_){}
+    return true;
+  }
+  document.addEventListener('click',function(e){
+    var a=e.target.closest&&e.target.closest('a[href^="#"]');
+    if(!a||a.getAttribute('href').length<2) return;
+    if(goto(a.getAttribute('href').slice(1),true)) e.preventDefault();
+  });
+
+  /* ---------- progress bar + back-to-top ---------- */
+  var prog=document.getElementById('progress'),top=document.getElementById('totop'),tick=false;
+  function update(){
+    var h=document.documentElement.scrollHeight-window.innerHeight;
+    var p=h>0?Math.min(1,Math.max(0,window.pageYOffset/h)):0;
+    prog.style.transform='scaleX('+p+')';
+    top.classList.toggle('show',window.pageYOffset>700);
+    tick=false;
+  }
+  window.addEventListener('scroll',function(){if(!tick){tick=true;requestAnimationFrame(update)}},{passive:true});
+  window.addEventListener('resize',update);
+  top.addEventListener('click',function(){goto('top',true)});
+  update();
+
+  /* ---------- active tab ---------- */
+  var tabs=document.querySelector('.tabs');
+  var links=[].slice.call(document.querySelectorAll('.tabs a'));
+  var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  function centerTab(a){
+    var left=a.offsetLeft-(tabs.clientWidth-a.offsetWidth)/2;
+    try{tabs.scrollTo({left:left,behavior:reduce?'auto':'smooth'})}catch(_){tabs.scrollLeft=left}
+  }
+  var sheets=[].slice.call(document.querySelectorAll('section.sheet'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(e.isIntersecting&&map[e.target.id]){
+          links.forEach(function(l){l.classList.remove('on')});
+          map[e.target.id].classList.add('on');
+          centerTab(map[e.target.id]);
+        }
+      });
+    },{rootMargin:'-30% 0px -60% 0px'});
+    sheets.forEach(function(s){if(/^s\d+$/.test(s.id))io.observe(s)});
+    new IntersectionObserver(function(es){
+      if(es[0].isIntersecting){links.forEach(function(l){l.classList.remove('on')});
+        try{tabs.scrollTo({left:0,behavior:reduce?'auto':'smooth'})}catch(_){tabs.scrollLeft=0}}
+    },{rootMargin:'-30% 0px -60% 0px'}).observe(document.getElementById('top'));
+
+    /* ---------- pages fade in as they are turned to ---------- */
+    if(!reduce){
+      var seen=new IntersectionObserver(function(es){
+        es.forEach(function(e){
+          if(e.isIntersecting){e.target.classList.remove('pre');seen.unobserve(e.target)}
+        });
+      },{rootMargin:'0px 0px -6% 0px',threshold:0.03});
+      sheets.forEach(function(s,i){
+        if(i===0) return;
+        if(s.getBoundingClientRect().top<window.innerHeight*0.9) return;
+        s.classList.add('pre');seen.observe(s);
+      });
+    }
+  }
+
+  /* honour a #hash on first load with the same easing offset */
+  if(location.hash.length>1){
+    window.addEventListener('load',function(){
+      var y=document.getElementById(location.hash.slice(1));
+      if(y) window.scrollTo(0,Math.max(0,docTop(y)-barH()-14));
+    });
+  }
+})();
+</script>
+</body>
+</html>
